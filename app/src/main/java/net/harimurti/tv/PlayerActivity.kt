@@ -18,11 +18,11 @@ import com.google.android.exoplayer2.upstream.HttpDataSource
 import net.harimurti.tv.databinding.ActivityPlayerBinding
 import net.harimurti.tv.databinding.CustomControlBinding
 import net.harimurti.tv.extra.*
+import net.harimurti.tv.model.Category
 import net.harimurti.tv.model.Channel
 import net.harimurti.tv.model.PlayData
 import net.harimurti.tv.model.Playlist
 import java.util.*
-import kotlin.collections.ArrayList
 
 class PlayerActivity : AppCompatActivity() {
     private var doubleBackToExitPressedOnce = false
@@ -30,15 +30,14 @@ class PlayerActivity : AppCompatActivity() {
     private var skipRetry = false
     private lateinit var preferences: Preferences
     private var playlist: Playlist? = null
-    private var categoryId: Int = 0
-    private var channels: ArrayList<Channel>? = null
+    private var category: Category? = null
     private var current: Channel? = null
     private lateinit var player: SimpleExoPlayer
     private lateinit var mediaItem: MediaItem
     private lateinit var trackSelector: DefaultTrackSelector
     private var lastSeenTrackGroupArray: TrackGroupArray? = null
-    private lateinit var binding: ActivityPlayerBinding
-    private lateinit var controlBinding: CustomControlBinding
+    private lateinit var bindingRoot: ActivityPlayerBinding
+    private lateinit var bindingControl: CustomControlBinding
 
     companion object {
         var isFirst = true
@@ -50,8 +49,8 @@ class PlayerActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        binding = ActivityPlayerBinding.inflate(layoutInflater)
-        setContentView(binding.root)
+        bindingRoot = ActivityPlayerBinding.inflate(layoutInflater)
+        setContentView(bindingRoot.root)
 
         isFirst = false
         isTelevision = UiMode(this).isTelevision()
@@ -62,14 +61,12 @@ class PlayerActivity : AppCompatActivity() {
             else PlaylistHelper(this).readCache()
         // set channels
         val parcel: PlayData? = intent.getParcelableExtra(PlayData.VALUE)
-        val category = parcel.let { playlist?.categories?.get(it?.catId as Int) }
-        categoryId = parcel?.catId as Int
-        channels = category?.channels
-        current = parcel.let { category?.channels?.get(it.chId) }
+        category = parcel.let { playlist?.categories?.get(it?.catId as Int) }
+        current = parcel.let { category?.channels?.get(it?.chId as Int) }
 
         // define some view
-        controlBinding = CustomControlBinding.bind(binding.root.findViewById(R.id.custom_control))
-        controlBinding.playerSettings.setOnClickListener { showTrackSelector() }
+        bindingControl = CustomControlBinding.bind(bindingRoot.root.findViewById(R.id.custom_control))
+        bindingControl.playerSettings.setOnClickListener { showTrackSelector() }
 
         // verify stream_url
         if (current == null) {
@@ -82,8 +79,9 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun playChannel() {
-        // set channel name
-        controlBinding.channelName.text = current?.name
+        // set category & channel name
+        bindingControl.categoryName.text = category?.name
+        bindingControl.channelName.text = current?.name
 
         // define mediaitem
         val drmLicense = playlist?.drm_licenses?.firstOrNull {
@@ -124,8 +122,8 @@ class PlayerActivity : AppCompatActivity() {
         player.addListener(PlayerListener())
 
         // set player view
-        binding.playerView.player = player
-        binding.playerView.requestFocus()
+        bindingRoot.playerView.player = player
+        bindingRoot.playerView.requestFocus()
 
         // play mediasouce
         player.playWhenReady = true
@@ -134,28 +132,27 @@ class PlayerActivity : AppCompatActivity() {
     }
 
     private fun switchChannel(mode: Int) {
-        val chId = channels?.indexOf(current) as Int
+        val catId = playlist?.categories?.indexOf(category) as Int
+        val chId = category?.channels?.indexOf(current) as Int
         when(mode) {
             CATEGORY_UP -> {
-                val back = categoryId - 1
-                if (back > -1) {
-                    categoryId = back
-                    channels = playlist?.categories?.get(back)?.channels
-                    current = channels!![0]
+                val previous = catId - 1
+                if (previous > -1) {
+                    category = playlist?.categories?.get(previous)
+                    current = category?.channels!![0]
                 }
             }
             CATEGORY_DOWN -> {
-                val next = categoryId + 1
+                val next = catId + 1
                 if (next < playlist?.categories?.size ?: 0) {
-                    categoryId = next
-                    channels = playlist?.categories?.get(next)?.channels
-                    current = channels!![0]
+                    category = playlist?.categories?.get(next)
+                    current = category?.channels!![0]
                 }
             }
             CHANNEL_PREVIOUS -> {
-                val back = chId - 1
-                if (back > -1) {
-                    current = channels!![back]
+                val previous = chId - 1
+                if (previous > -1) {
+                    current = category?.channels!![previous]
                 }
                 else {
                     switchChannel(CATEGORY_UP)
@@ -164,8 +161,8 @@ class PlayerActivity : AppCompatActivity() {
             }
             CHANNEL_NEXT -> {
                 val next = chId + 1
-                if (next < channels?.size ?: 0) {
-                    current = channels!![next]
+                if (next < category?.channels?.size ?: 0) {
+                    current = category?.channels!![next]
                 }
                 else {
                     switchChannel(CATEGORY_DOWN)
@@ -181,23 +178,32 @@ class PlayerActivity : AppCompatActivity() {
 
     private inner class PlayerListener : Player.Listener {
         override fun onPlaybackStateChanged(state: Int) {
-            if (state == Player.STATE_READY) {
-                showLayoutMessage(View.GONE, false)
-                preferences.watched = channels?.indexOf(current)?.let { PlayData(categoryId, it) } as PlayData
-            } else if (state == Player.STATE_BUFFERING) {
-                showLayoutMessage(View.VISIBLE, false)
+            bindingControl.playerSettings.isEnabled = TrackSelectionDialog.willHaveContent(trackSelector)
+            when (state) {
+                Player.STATE_IDLE -> { }
+                Player.STATE_BUFFERING -> hideCardMessage()
+                Player.STATE_READY -> {
+                    hideCardMessage()
+                    val catId = playlist?.categories?.indexOf(category) as Int
+                    val chId = category?.channels?.indexOf(current) as Int
+                    preferences.watched = PlayData(catId, chId)
+                }
+                Player.STATE_ENDED -> {
+                    showCardMessage(getString(R.string.stream_has_ended),
+                        getString(R.string.text_auto_retry))
+                    retryPlayback()
+                }
             }
-            controlBinding.playerSettings.isEnabled = TrackSelectionDialog.willHaveContent(trackSelector)
         }
 
         override fun onPlayerError(error: ExoPlaybackException) {
             if (error.type == ExoPlaybackException.TYPE_SOURCE) {
-                binding.textStatus.setText(R.string.source_offline)
+                showCardMessage(getString(R.string.stream_source_offline),
+                    getString(R.string.text_auto_retry))
             } else {
-                binding.textStatus.setText(R.string.something_went_wrong)
+                showCardMessage(getString(R.string.something_went_wrong),
+                    getString(R.string.text_auto_retry))
             }
-            binding.textRetry.setText(R.string.text_auto_retry)
-            showLayoutMessage(View.VISIBLE, true)
             retryPlayback()
         }
 
@@ -224,12 +230,15 @@ class PlayerActivity : AppCompatActivity() {
             override fun onCountDown(count: Int) {
                 val left = count - 1
                 if (!network.isConnected()) {
-                    binding.textStatus.setText(R.string.no_network)
+                    showCardMessage(getString(R.string.no_network),
+                        bindingControl.textMessage.text.toString())
                 }
                 if (left <= 0) {
-                    binding.textRetry.setText(R.string.text_auto_retry_now)
+                    showCardMessage(bindingControl.textTitle.text.toString(),
+                        getString(R.string.text_auto_retry_now))
                 } else {
-                    binding.textRetry.text = String.format(getString(R.string.text_auto_retry_second), left)
+                    showCardMessage(bindingControl.textTitle.text.toString(),
+                        String.format(getString(R.string.text_auto_retry_second), left))
                 }
             }
 
@@ -250,15 +259,14 @@ class PlayerActivity : AppCompatActivity() {
             .show(supportFragmentManager, null)
     }
 
-    private fun showLayoutMessage(visibility: Int, isMessage: Boolean) {
-        binding.layoutStatus.visibility = visibility
-        if (!isMessage) {
-            binding.layoutSpin.visibility = View.VISIBLE
-            binding.layoutText.visibility = View.GONE
-        } else {
-            binding.layoutSpin.visibility = View.GONE
-            binding.layoutText.visibility = View.VISIBLE
-        }
+    private fun hideCardMessage() {
+        bindingControl.layoutMessage.visibility = View.INVISIBLE
+    }
+
+    private fun showCardMessage(title: String, message: String) {
+        bindingControl.textTitle.text = title
+        bindingControl.textMessage.text = message
+        bindingControl.layoutMessage.visibility = View.VISIBLE
     }
 
     override fun onResume() {
@@ -297,6 +305,7 @@ class PlayerActivity : AppCompatActivity() {
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         when(keyCode) {
             KeyEvent.KEYCODE_MENU -> showTrackSelector()
+            KeyEvent.KEYCODE_DPAD_CENTER -> showTrackSelector()
             KeyEvent.KEYCODE_DPAD_UP -> switchChannel(CATEGORY_UP)
             KeyEvent.KEYCODE_DPAD_DOWN -> switchChannel(CATEGORY_DOWN)
             KeyEvent.KEYCODE_DPAD_LEFT -> switchChannel(CHANNEL_PREVIOUS)
