@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # NontonTV
 
 Nonton siaran televisi dimana aja dan kapan aja, asalkan kuota banyak & internet kenceng. Cocok untuk dipasang ke android stb/box. Aplikasi bisa download [disini](https://github.com/hariimurti/NontonTV/releases).
@@ -42,3 +43,47 @@ Nonton siaran televisi dimana aja dan kapan aja, asalkan kuota banyak & internet
 - *untuk akses **pengaturan** gunakan tombol recent (tekan lama) di hp maupun remote.*
 - *playlist kustom: isikan tautan ke file json, atau biarkan kosong maka akan membaca file [NontonTV.json](./json/playlist.json) dari penyimpanan internal (pastikan anda telah mengcopykan file tersebut).*
 - *bantu mengupdate [siaran ini](./json/playlist.json), menggunakan soft [iptv.manager](https://github.com/hariimurti/NontonTV/releases/download/v1.4/IPTV.Manager_v2021.5.14.2327.zip).*
+=======
+# PLAYLIST for NontonTV
+
+branch ini berisikan playlist untuk aplikasi NontonTV v2.x
+
+## FORMAT
+
+contoh json yg digunakan :
+```json
+{
+  "categories": [
+    {
+      "name": "kategori 1",
+      "channels": [
+        {
+          "name": "siaran 1",
+          "stream_url": "https://...",
+          "drm_name": "nama drm"
+        },
+        {
+          "name": "siaran 2",
+          "stream_url": "https://...",
+          "drm_name": "nama drm"
+        }
+      ],
+      "name": "kategori 2",
+      "channels": [
+        {
+          "name": "siaran 3",
+          "stream_url": "https://..."
+        }
+      ]
+    }
+  ],
+  "drm_licenses": [
+    {
+      "drm_name": "nama drm",
+      "drm_url": "https://..."
+    }
+  ]
+}
+```
+*notes*: `drm_name` pada channel bisa dihilangkan kalau tdk pakai drm
+>>>>>>> playlist
