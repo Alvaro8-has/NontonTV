@@ -17,10 +17,12 @@ class Preferences(context: Context) {
         private const val OPEN_LAST_WATCHED = "OPEN_LAST_WATCHED"
         private const val LAUNCH_AT_BOOT = "LAUNCH_AT_BOOT"
         private const val USE_CUSTOM_PLAYLIST = "USE_CUSTOM_PLAYLIST"
+        private const val MERGE_PLAYLIST = "MERGE_PLAYLIST"
         private const val PLAYLIST_EXTERNAL = "PLAYLIST_EXTERNAL"
         private const val LAST_VERSIONCODE = "LAST_VERSIONCODE"
         private const val TOTAL_CONTRIBUTORS = "TOTAL_CONTRIBUTORS"
         private const val SHOW_LESS_CONTRIBUTORS = "SHOW_LESS_CONTRIBUTORS"
+        private const val RESIZE_MODE = "RESIZE_MODE"
     }
 
     fun setLastCheckUpdate() {
@@ -78,6 +80,14 @@ class Preferences(context: Context) {
             editor.apply()
         }
 
+    var mergePlaylist: Boolean
+        get() = preferences.getBoolean(MERGE_PLAYLIST, false)
+        set(value) {
+            editor = preferences.edit()
+            editor.putBoolean(MERGE_PLAYLIST, value)
+            editor.apply()
+        }
+
     var playlistExternal: String
         get() = preferences.getString(PLAYLIST_EXTERNAL, "").toString()
         set(value) {
@@ -109,6 +119,14 @@ class Preferences(context: Context) {
         set(value) {
             editor = preferences.edit()
             editor.putInt(TOTAL_CONTRIBUTORS, value)
+            editor.apply()
+        }
+
+    var resizeMode: Int
+        get() = preferences.getInt(RESIZE_MODE, 0)
+        set(value) {
+            editor = preferences.edit()
+            editor.putInt(RESIZE_MODE, value)
             editor.apply()
         }
 }

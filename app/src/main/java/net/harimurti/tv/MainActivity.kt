@@ -16,7 +16,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import androidx.recyclerview.widget.DividerItemDecoration
-import androidx.recyclerview.widget.LinearLayoutManager
 import com.android.volley.Request
 import com.android.volley.RequestQueue
 import com.android.volley.Response
@@ -29,11 +28,11 @@ import com.google.gson.Gson
 import com.google.gson.JsonSyntaxException
 import net.harimurti.tv.adapter.CategoryAdapter
 import net.harimurti.tv.databinding.ActivityMainBinding
+import net.harimurti.tv.dialog.ProgressDialog
+import net.harimurti.tv.dialog.SettingsDialog
 import net.harimurti.tv.extra.*
-import net.harimurti.tv.model.GithubUser
-import net.harimurti.tv.model.PlayData
-import net.harimurti.tv.model.Playlist
-import net.harimurti.tv.model.Release
+import net.harimurti.tv.model.*
+import java.util.*
 
 open class MainActivity : AppCompatActivity() {
     private var doubleBackToExitPressedOnce = false
@@ -44,16 +43,33 @@ open class MainActivity : AppCompatActivity() {
     private lateinit var volley: RequestQueue
     private lateinit var loading: ProgressDialog
 
-    private val updatePlaylistReceiver: BroadcastReceiver = object : BroadcastReceiver() {
+    private val broadcastReceiver: BroadcastReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent) {
-            updatePlaylist()
+            when(intent.getStringExtra(MAIN_CALLBACK)){
+                UPDATE_PLAYLIST -> updatePlaylist()
+                OPEN_SETTINGS -> openSettings()
+            }
         }
+    }
+
+    companion object {
+        const val MAIN_CALLBACK = "MAIN_CALLBACK"
+        const val UPDATE_PLAYLIST = "UPDATE_PLAYLIST"
+        const val OPEN_SETTINGS = "OPEN_SETTINGS"
     }
 
     @SuppressLint("DefaultLocale")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = ActivityMainBinding.inflate(layoutInflater)
+        binding.swipeContainer.setOnRefreshListener {
+            updatePlaylist()
+        }
+
+        preferences = Preferences(this)
+        playlistHelper = PlaylistHelper(this)
+        loading = ProgressDialog(this)
+
         isTelevision = UiMode(this).isTelevision()
         if (isTelevision) {
             setTheme(R.style.AppThemeTv)
@@ -61,17 +77,14 @@ open class MainActivity : AppCompatActivity() {
         setContentView(binding.root)
 
         // show loading message
-        loading = ProgressDialog(this)
-            .show(getString(R.string.loading))
+        loading.show(getString(R.string.loading))
 
+        // ask all premissions need
         askPermissions()
-
-        preferences = Preferences(this)
-        playlistHelper = PlaylistHelper(this)
 
         // local broadcast receiver to update playlist
         LocalBroadcastManager.getInstance(this)
-            .registerReceiver(updatePlaylistReceiver, IntentFilter("RELOAD_MAIN_PLAYLIST"))
+            .registerReceiver(broadcastReceiver, IntentFilter(MAIN_CALLBACK))
 
         // launch player if playlastwatched is true
         if (preferences.playLastWatched && PlayerActivity.isFirst) {
@@ -96,7 +109,7 @@ open class MainActivity : AppCompatActivity() {
         if (Playlist.loaded == null) {
             updatePlaylist()
         } else {
-            setPlaylistToAdapter(Playlist.loaded!!)
+            setPlaylistToAdapter(Playlist.loaded!!,false)
         }
 
         // check new release
@@ -111,19 +124,37 @@ open class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun setPlaylistToAdapter(newPls: Playlist) {
-        binding.rvCategory.adapter = CategoryAdapter(newPls.categories)
-        binding.rvCategory.layoutManager = LinearLayoutManager(this)
-        binding.rvCategory.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
+    private fun setPlaylistToAdapter(playlist: Playlist, isMerge: Boolean) {
+        val playlistSet: Playlist = playlist
+        if(isMerge && Playlist.loaded != null){
+            Playlist.loaded!!.categories?.let { playlistSet.categories?.addAll(it) }
+            Playlist.loaded!!.drm_licenses?.let { playlistSet.drm_licenses?.addAll(it) }
+        }
+
+        // set new playlist
+        if (binding.rvCategory.adapter == null) {
+            binding.rvCategory.adapter = CategoryAdapter(playlistSet.categories)
+            binding.rvCategory.addItemDecoration(DividerItemDecoration(this, DividerItemDecoration.VERTICAL))
+        }
+        else {
+            val adapter = binding.rvCategory.adapter as CategoryAdapter
+            adapter.change(playlistSet.categories)
+        }
 
         // end the loading
         loading.dismiss()
+        binding.swipeContainer.isRefreshing = false
 
-        if (Playlist.loaded != newPls) Toast.makeText(this, R.string.playlist_updated, Toast.LENGTH_SHORT).show()
-        Playlist.loaded = newPls
+        if (Playlist.loaded != null)
+            Toast.makeText(this, R.string.playlist_updated, Toast.LENGTH_SHORT).show()
+
+        Playlist.loaded = playlistSet
     }
 
     private fun updatePlaylist() {
+        //reinit helper for new name
+        playlistHelper = PlaylistHelper(this)
+
         // from local storage
         if (playlistHelper.mode() == PlaylistHelper.MODE_LOCAL) {
             val local = playlistHelper.readLocal()
@@ -131,8 +162,9 @@ open class MainActivity : AppCompatActivity() {
                 showAlertLocalError()
                 return
             }
-            setPlaylistToAdapter(local)
-            return
+            setPlaylistToAdapter(local,false)
+            if(!preferences.mergePlaylist)
+                return
         }
 
         // from internet
@@ -142,7 +174,7 @@ open class MainActivity : AppCompatActivity() {
                 try {
                     val newPls = Gson().fromJson(response, Playlist::class.java)
                     playlistHelper.writeCache(response)
-                    setPlaylistToAdapter(newPls)
+                    setPlaylistToAdapter(newPls,preferences.mergePlaylist)
                 } catch (error: JsonSyntaxException) {
                     showAlertPlaylistError(error.message)
                 }
@@ -224,6 +256,7 @@ open class MainActivity : AppCompatActivity() {
             .setPositiveButton(R.string.dialog_retry) { _: DialogInterface?, _: Int -> updatePlaylist() }
             .setNegativeButton(getString(R.string.dialog_default)) { _: DialogInterface?, _: Int ->
                 preferences.useCustomPlaylist = false
+                preferences.mergePlaylist = false
                 updatePlaylist()
             }
         alert.create().show()
@@ -238,7 +271,7 @@ open class MainActivity : AppCompatActivity() {
             .setPositiveButton(R.string.dialog_retry) { _: DialogInterface?, _: Int -> updatePlaylist() }
         val cache = playlistHelper.readCache()
         if (cache != null) {
-            alert.setNegativeButton(R.string.dialog_cached) { _: DialogInterface?, _: Int -> setPlaylistToAdapter(cache) }
+            alert.setNegativeButton(R.string.dialog_cached) { _: DialogInterface?, _: Int -> setPlaylistToAdapter(cache,false) }
         }
         alert.create().show()
     }
@@ -287,22 +320,27 @@ open class MainActivity : AppCompatActivity() {
     @TargetApi(23)
     protected fun askPermissions() {
         if (Build.VERSION.SDK_INT < VERSION_CODES.M) return
-        if (checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
-            checkSelfPermission(Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED ||
-            checkSelfPermission(Manifest.permission.MANAGE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-            requestPermissions(
-                arrayOf(
-                    Manifest.permission.READ_EXTERNAL_STORAGE,
-                    Manifest.permission.WRITE_EXTERNAL_STORAGE,
-                    Manifest.permission.MANAGE_EXTERNAL_STORAGE
-                ), 1000
-            )
+        val permissions = arrayOf(
+            Manifest.permission.READ_EXTERNAL_STORAGE
+        )
+        for (perm in permissions) {
+            if (checkSelfPermission(perm) != PackageManager.PERMISSION_GRANTED) {
+                requestPermissions(permissions, 260621)
+                break
+            }
         }
+    }
+
+    override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<String?>, grantResults: IntArray) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != 260621) return
+        if (!grantResults.contains(PackageManager.PERMISSION_DENIED)) return
+        Toast.makeText(this, getString(R.string.must_allow_permissions), Toast.LENGTH_LONG).show()
     }
 
     override fun onKeyUp(keyCode: Int, event: KeyEvent): Boolean {
         when(keyCode) {
-            KeyEvent.KEYCODE_MENU -> SettingsDialog(this).show()
+            KeyEvent.KEYCODE_MENU -> openSettings()
             else -> return super.onKeyUp(keyCode, event)
         }
         return true
@@ -321,7 +359,12 @@ open class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         LocalBroadcastManager.getInstance(this)
-            .unregisterReceiver(updatePlaylistReceiver)
+            .unregisterReceiver(broadcastReceiver)
         super.onDestroy()
+    }
+
+    private fun openSettings(){
+        SettingsDialog(this)
+            .show(supportFragmentManager.beginTransaction(),null)
     }
 }

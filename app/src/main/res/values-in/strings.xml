@@ -3,15 +3,21 @@
     <string name="something_went_wrong">Ada sesuatu yang salah!</string>
     <string name="stream_has_ended">Siaran telah berakhir</string>
     <string name="stream_source_offline">Siaran tidak dapat diakses</string>
-    <string name="text_auto_retry">akan dicoba ulang otomatis dalam 5</string>
-    <string name="text_auto_retry_second">akan dicoba ulang otomatis dalam %d</string>
-    <string name="text_auto_retry_now">akan dicoba ulang otomatis sekarang</string>
+    <string name="btn_retry">Coba Ulang</string>
+    <string name="btn_retry_count">Coba Ulang (%d)</string>
+    <string name="btn_close">Keluar</string>
     <string name="no_network">Tidak ada koneksi internet!</string>
     <string name="press_back_twice_exit_app">Tekan lagi untuk keluar dari aplikasi!</string>
     <string name="press_back_twice_exit_player">Tekan lagi untuk keluar dari pemutar!</string>
     <string name="track_selection_title">Pilih trek</string>
     <string name="error_unsupported_video">Media menyertakan trek video, tetapi tidak ada yang dapat diputar oleh perangkat ini</string>
     <string name="error_unsupported_audio">Media menyertakan trek audio, tetapi tidak ada yang dapat diputar oleh perangkat ini</string>
+    <string name="mode_fit">Bawaan</string>
+    <string name="mode_fixed_width">Lebar tetap</string>
+    <string name="mode_fixed_height">Tinggi tetap</string>
+    <string name="mode_fill">Mengisi</string>
+    <string name="mode_zoom">Perbesar</string>
+    <string name="must_allow_permissions">Kamu harus mengizinkan semua permintaan izin agar aplikasi ini berfungsi dengan baik!</string>
 
     <!-- alert playlist error -->
     <string name="playlist_updated">Playlist sudah diperbaharui!</string>
@@ -20,6 +26,8 @@
     <string name="dialog_retry">Coba lagi</string>
     <string name="dialog_cached">Gunakan cache</string>
     <string name="dialog_default">Gunakan default</string>
+    <string name="player_playback_error">Kesalahan Pemutaran</string>
+    <string name="player_no_playlist">Kita punya masalah dgn playlist</string>
     <string name="player_no_channel">Tidak ada saluran utk diputar</string>
     <string name="local_playlist_read_error">Tidak bisa memuat NontonTV.json dari penyimpanan internal!</string>
 
@@ -44,4 +52,7 @@
     <string name="reload_playlist">Muat ulang Playlist</string>
     <string name="hint_custom_playlist">kosongkan utk memuat playlist lokal</string>
     <string name="switch_custom_playlist">Playlist kustom</string>
+    <string name="toast_screen_mode">Mode Layar : %s</string>
+    <string name="text_screen_mode">Layar :</string>
+    <string name="merge_playlist">Gabungkan</string>
 </resources>
