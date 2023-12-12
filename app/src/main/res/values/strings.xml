@@ -2,20 +2,20 @@
     <string name="app_name" translatable="false">Nonton TV</string>
 
     <!-- json link -->
-    <string name="website" translatable="false">https://github.com/hariimurti/NontonTV</string>
-    <string name="telegram_group" translatable="false">https://t.me/paijemdev</string>
+    <string name="website" translatable="false">https://github.com/Alvaro8/NontonTV</string>
+    <string name="telegram_group" translatable="false">https://t.me/alvarodewa</string>
     <string name="iptv_playlist" translatable="false">https://iptv-org.github.io/iptv/countries/%s.m3u</string>
-    <string name="json_release" translatable="false">https://github.com/hariimurti/NontonTV/raw/master/json/release.json</string>
-    <string name="apk_release" translatable="false">https://github.com/hariimurti/NontonTV/releases/download/%s/net.harimurti.tv_%s_b%d.apk</string>
-    <string name="gh_contributors" translatable="false">https://api.github.com/repos/hariimurti/NontonTV/contributors</string>
-    <string name="main_contributors" translatable="false">harimurti, madbulls</string>
+    <string name="json_release" translatable="false">https://github.com/Alvaro8/NontonTV/raw/master/json/release.json</string>
+    <string name="apk_release" translatable="false">https://github.com/Alvaro8/NontonTV/releases/download/%s/net.harimurti.tv_%s_b%d.apk</string>
+    <string name="gh_contributors" translatable="false">https://api.github.com/repos/Alvaro8/NontonTV/contributors</string>
+    <string name="main_contributors" translatable="false">Alvaro8,</string>
 
     <!-- some text -->
-    <string name="text_presents">.: PaijemDev Presents :.</string>
+    <string name="text_presents">.: ALVARO DEWA Presents :.</string>
     <string name="app_tagline_one">Free - OpenSource - No Ads,</string>
     <string name="app_tagline_two">Light - Simple - Minimalist</string>
     <string name="thanks_to">Thanks To :</string>
-    <string name="thanks_for_support">iptv-org for playlist and people who support this project 😘</string>
+    <string name="thanks_for_support">iptv-org for playlist and people who support this project </string>
     <string name="btn_retry">Retry</string>
     <string name="btn_retry_count">Retry (%d)</string>
     <string name="btn_close">Close</string>
